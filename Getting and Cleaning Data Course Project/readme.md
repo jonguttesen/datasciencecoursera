@@ -15,10 +15,6 @@ or uncomment the lines in the script to have it done for you.
 
 To run the script, in R, source the file "run_analasys.R" and the view the result data.table. The result data.tabe is also uploaded in this repository as "result.txt".
 
-## Motivation
-
-A short description of the motivation behind the creation and maintenance of the project. This should explain **why** the project exists.
-
 ## License
 
 This is released under the GPL2 license.
