@@ -1,0 +1,106 @@
+---
+title: "Regression Models Course Project"
+author: "Jón Guttesen"
+date: "18 jun 2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Summary
+
+This article will explore the relationship between a set of variables and fuel efficiency measured in miles per gallon (MPG). In particular this article will try to answer the following two questions:
+
+  * Is an automatic or manual transmission better for MPG
+  * Quantify the MPG difference between automatic and manual transmissions
+
+The finding is that manual transmission yealds higher fuel efficiency than automatic transmission by just under 3 MPG.
+
+### The dataset
+The data in this article was extracted from the 1974 Motor Trend US magazine. It comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973–74 models). The data consists of 32 observations on 11 variables:
+
+  * [, 1]	 mpg	 Miles/(US) gallon
+  * [, 2]	 cyl	 Number of cylinders
+  * [, 3]	 disp	 Displacement (cu.in.)
+  * [, 4]	 hp	   Gross horsepower
+  * [, 5]	 drat	 Rear axle ratio
+  * [, 6]	 wt	   Weight (1000 lbs)
+  * [, 7]	 qsec	 1/4 mile time
+  * [, 8]	 vs	   V/S
+  * [, 9]	 am	   Transmission (0 = automatic, 1 = manual)
+  * [,10]	 gear	 Number of forward gears
+  * [,11]	 carb	 Number of carburetors
+
+The only data processing performed is to convert the AM variable to a factor type and assign it some labels:
+
+```{r}
+library(datasets)
+
+# but first a plot is saved of the data
+library(GGally)
+gcorr <- ggcorr(mtcars, label = TRUE)
+
+mtcars$am <- factor(mtcars$am, labels = c("automatic", "manual"))
+head(mtcars)
+```
+
+### Is an automatic or manual transmission better for MPG
+To answer this question, the MGP as a product of type of transmission is visualized in a violin plot. This gives an initial indication that the manual transmission is better for MPG.
+
+
+```{r}
+library(ggplot2)
+g <- ggplot( data= mtcars, aes(am, mpg))
+g + geom_violin()
+```
+
+Furthermore a t.test is performed on the simple model of MPG as a product of AM. This yelds the  
+means of both types of transmissions, the p-value of the two means not being equal and the confidence intervals.
+
+A mean of 17.15 for automatic transmission and a mean of 24.39 for manual transmission. Over 7 MPG better for manual transmission is a sizeable difference.  
+
+
+```{r}
+t.test( mpg ~ am,  data=mtcars)
+```
+
+### Quantify the MPG difference between automatic and manual transmissions
+The difference in MPG will be quantified using a linear model. This model will show the effect of transmission og MPG, but will also account for the effect of the other variables in the dataset on MPG. And removing the effect of the other variables on MPG from the effect of the transmission variable.
+
+Initially the most complex model wich includes every variable in the dataset is provided.
+The coefficients of the model is a large r squared wich indicates a model with good predictive properties, but also a large standard error which indicates a high level of noise in the model. This is also indicated in the poor p-values of the variables, as none of the variables has a p-value < 0.05.
+
+
+```{r}
+fitall <- lm( mpg ~ ., data = mtcars)
+summary(fitall)
+```
+
+
+To simplify the model, and in the process reducing the error, the "step"" function in the MASS package is used. This function automates the process of optimizing the predictive property of a model while removing variables from the model.
+
+The model is simplifies by removing supurflues variables. Variables which have high correlation in variance. To visualize the correlation between the variables this matrix is included.
+
+```{r}
+gcorr
+```
+
+The final model.
+
+```{r}
+stepmodel <- step( lm( mpg ~ ., data = mtcars), trace=0, steps=100000, direction = "both" )
+summary(stepmodel)
+
+par(mfrow = c(2, 2))  # Split the plotting panel into a 2 x 2 grid
+plot(stepmodel)  # Plot the model information
+```
+
+The residual plot is included to check for bias in the model.
+
+### Conclusion
+The mean of manual vs that of automatic is 2.94 at p value of > 0.95.
+

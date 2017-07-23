@@ -1,0 +1,134 @@
+---
+title: "Exploring harmful effects of weather events"
+author: "Jón Guttesen"
+date: "5 mai 2017"
+output: html_document
+---
+##Synopsis
+The U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+This project is an analasys of the harmfulness of each type of weather event measured in human fatalities or injures and damage to crops and property.
+
+##Data processing
+
+The folowing code loads libraries and reads data.
+```{r}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE )
+
+# Load the required libraries
+library(ggplot2)
+library(lubridate)
+library(stringdist)
+
+# Read the data. The data file must be stored in the current working directory.
+repfilename = "repdata_data_StormData.csv.bz2"
+repdatafile <- bzfile(repfilename, open = "r")
+repdata <- read.csv(repdatafile, header = TRUE, strip.white = TRUE, stringsAsFactors = FALSE )
+```
+
+The folowing processing includes some formating and class convertions and the folowing steps: 
+ * Discards data before 1/1/1996 when the current measuring standards begin.
+ * Discards non-pertinent columns.
+ * Tries to assign one of the 48 standard weather event type to the columns using Levenstein distance algorithm
+ * calculates the true value of damages to properties and crops using the exponent fields 
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE )
+
+# Format the begin date column 
+repdata$BGN_DATEdate <- as.Date(as.character(repdata$BGN_DATE), format = "%m/%d/%Y")
+
+# Exclude rows before 1996
+repdata <- repdata[(repdata$BGN_DATEdate >= 1996),]
+
+# Select only pertinent columns
+repdata <- repdata[,c('EVTYPE','FATALITIES','INJURIES', 'PROPDMG', 'PROPDMGEXP', 'CROPDMG', 'CROPDMGEXP')]
+
+# Try to assign a standard event type.
+
+STD_EVENT_TYPES= toupper(c("Astronomical Low Tide","Avalanche","Blizzard", "Coastal Flood", "Cold/Wind Chill", "Debris Flow", "Dense Fog", "Dense Smoke", "Drought", "Dust Devil", "Dust Storm", "Excessive Heat", "Extreme Cold/Wind Chill", "Flash Flood", "Flood", "Frost/Freeze", "Funnel Cloud", "Freezing Fog", "Hail", "Heat", "Heavy Rain", "Heavy Snow", "High Surf", "High Wind", "Hurricane (Typhoon)", "Ice Storm","Lake-Effect Snow","Lakeshore Flood","Lightning","Marine Hail","Marine High Wind","Marine Strong Wind","Marine Thunderstorm Wind","Rip Current","Seiche","Sleet","Storm Surge/Tide","Strong Wind","Thunderstorm Wind","Tornado","Tropical Depression","Tropical Storm","Tsunami","Volcanic Ash","Waterspout","Wildfire","Winter Storm","Winter Weather"))
+
+# Format evtype column
+repdata$EVTYPE <- toupper(repdata$EVTYPE)
+
+# Use amatch "Levenstein" method to group EVTYPE into the 48 standard EV types.
+repdata$EVTYPE1 <- STD_EVENT_TYPES[amatch(repdata$EVTYPE, STD_EVENT_TYPES, maxDist = 10, method = "lv")]
+
+# report success factor
+mean( is.na( amatch(repdata$EVTYPE, STD_EVENT_TYPES, maxDist = 10, method = "lv")))
+
+repdata$EVTYPE1  <- as.factor(repdata$EVTYPE1)
+
+# Format the propery and crop damage exponent fields 
+repdata$PROPDMGEXP <- toupper(repdata$PROPDMGEXP)
+repdata$CROPDMGEXP <- toupper(repdata$CROPDMGEXP)
+
+repdata$CROPDMG1 <- 0
+repdata[repdata$CROPDMGEXP == "1", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "1", ]$CROPDMG * 10^1
+repdata[repdata$CROPDMGEXP == "2", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "2", ]$CROPDMG * 10^2
+repdata[repdata$CROPDMGEXP == "3", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "3", ]$CROPDMG * 10^3
+repdata[repdata$CROPDMGEXP == "4", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "4", ]$CROPDMG * 10^4
+repdata[repdata$CROPDMGEXP == "5", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "5", ]$CROPDMG * 10^5
+repdata[repdata$CROPDMGEXP == "6", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "6", ]$CROPDMG * 10^6
+repdata[repdata$CROPDMGEXP == "7", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "7", ]$CROPDMG * 10^7
+repdata[repdata$CROPDMGEXP == "8", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "8", ]$CROPDMG * 10^8
+repdata[repdata$CROPDMGEXP == "9", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "9", ]$CROPDMG * 10^9
+repdata[repdata$CROPDMGEXP == "H", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "H", ]$CROPDMG * 10^2
+repdata[repdata$CROPDMGEXP == "K", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "K", ]$CROPDMG * 10^3
+repdata[repdata$CROPDMGEXP == "M", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "M", ]$CROPDMG * 10^6
+repdata[repdata$CROPDMGEXP == "B", ]$CROPDMG1 <-repdata[repdata$CROPDMGEXP == "B", ]$CROPDMG * 10^9
+
+repdata$PROPDMG1 <- 0
+repdata[repdata$PROPDMGEXP == "1", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "1", ]$PROPDMG * 10^1
+repdata[repdata$PROPDMGEXP == "2", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "2", ]$PROPDMG * 10^2
+repdata[repdata$PROPDMGEXP == "3", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "3", ]$PROPDMG * 10^3
+repdata[repdata$PROPDMGEXP == "4", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "4", ]$PROPDMG * 10^4
+repdata[repdata$PROPDMGEXP == "5", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "5", ]$PROPDMG * 10^5
+repdata[repdata$PROPDMGEXP == "6", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "6", ]$PROPDMG * 10^6
+repdata[repdata$PROPDMGEXP == "7", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "7", ]$PROPDMG * 10^7
+repdata[repdata$PROPDMGEXP == "8", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "8", ]$PROPDMG * 10^8
+repdata[repdata$PROPDMGEXP == "9", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "9", ]$PROPDMG * 10^9
+repdata[repdata$PROPDMGEXP == "H", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "H", ]$PROPDMG * 10^2
+repdata[repdata$PROPDMGEXP == "K", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "K", ]$PROPDMG * 10^3
+repdata[repdata$PROPDMGEXP == "M", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "M", ]$PROPDMG * 10^6
+repdata[repdata$PROPDMGEXP == "B", ]$PROPDMG1 <-repdata[repdata$PROPDMGEXP == "B", ]$PROPDMG * 10^9
+
+repdata$TOTALDMG <- repdata$CROPDMG1 + repdata$PROPDMG1
+
+
+```
+
+##Results
+
+Summarize and plot fatalities by standard weather events and the same for injuries.
+```{r}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE )
+
+repdatafatal <- aggregate( FATALITIES ~ EVTYPE1, repdata, sum )
+repdatafatal <- repdatafatal[order(repdatafatal$FATALITIES, decreasing = TRUE),]
+repdatafatal <- repdatafatal[((repdatafatal$FATALITIES) > 0),]
+
+#ggplot(repdatafatal, aes(x=head(reorder(EVTYPE1,-FATALITIES),10), weight=FATALITIES, fill=FATALITIES)) + geom_bar()
+
+ggplot(head(repdatafatal,10), aes(x=reorder(EVTYPE1,-FATALITIES), weight=FATALITIES, fill=FATALITIES)) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+repdatainj <- aggregate( INJURIES ~ EVTYPE1, repdata, sum )
+repdatainj <- repdatainj[order(repdatainj$INJURIES, decreasing = TRUE),]
+repdatainj <- repdatainj[((repdatainj$INJURIES) > 0),]
+
+ggplot(head(repdatainj,10), aes(x=reorder(EVTYPE1,-INJURIES), weight=INJURIES, fill=INJURIES)) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+Summarize and plot damages to property and crops.
+
+```{r}
+  knitr::opts_chunk$set(echo = TRUE, cache = TRUE )
+
+repdatadmg <- aggregate( TOTALDMG ~ EVTYPE1, repdata, sum )
+repdatadmg <- repdatadmg[order(repdatadmg$TOTALDMG, decreasing = TRUE),]
+#repdatadmg <- repdatadmg[((repdatadmg$INJURIES) > 0),]
+
+ggplot(head(repdatadmg,10), aes(x=reorder(EVTYPE1,-TOTALDMG), weight=TOTALDMG, fill=TOTALDMG)) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
