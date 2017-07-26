@@ -1,0 +1,23 @@
+---
+title: 'Peer-graded Assignent: R Markdown and Leaflet'
+author: "Jón Guttesen"
+date: "26 jul 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The map
+
+Date created: juli 26, 2017
+
+```{r, echo=FALSE}
+library(leaflet)
+mymap <- leaflet() %>%
+  addTiles() %>%
+  addMarkers(lng = 0, lat = 0, popup = "Hello World")
+mymap
+```
+
